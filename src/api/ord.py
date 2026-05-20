@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import Any
 
 from src.api.auth import TknMgr
 from src.api.cli import ApiCli
@@ -12,6 +13,23 @@ from src.api.err import ensure_ok
 @dataclass(slots=True)
 class OrdRes:
     ord_no: str
+    dmst_stex_tp: str
+
+
+@dataclass(slots=True)
+class OrdStat:
+    ord_no: str
+    orig_ord_no: str
+    stk_cd: str
+    stk_nm: str
+    trde_tp: str
+    io_tp_nm: str
+    ord_qty: str
+    cntr_qty: str
+    ord_uv: str
+    cntr_uv: str
+    cntr_tm: str
+    acpt_tp: str
     dmst_stex_tp: str
 
 
@@ -120,3 +138,64 @@ class OrdApi:
             "cncl_qty": str(qty),
         }
         return self._post("kt10003", body, dmst_stex_tp)
+
+    def get_prst(
+        self,
+        *,
+        ord_dt: str = "",
+        stk_bond_tp: str = "0",
+        mrkt_tp: str = "0",
+        sell_tp: str = "0",
+        qry_tp: str = "0",
+        stk_cd: str = "",
+        fr_ord_no: str = "",
+        dmst_stex_tp: str = "KRX",
+    ) -> list[OrdStat]:
+        """계좌별주문체결현황요청 kt00009.
+
+        qry_tp: 0=전체, 1=체결
+        """
+        tkn = self.tkn_mgr.get().val
+        body = {
+            "ord_dt": ord_dt,
+            "stk_bond_tp": stk_bond_tp,
+            "mrkt_tp": mrkt_tp,
+            "sell_tp": sell_tp,
+            "qry_tp": qry_tp,
+            "stk_cd": stk_cd,
+            "fr_ord_no": fr_ord_no,
+            "dmst_stex_tp": dmst_stex_tp,
+        }
+        res = self.cli.req(
+            method="POST",
+            path="/api/dostk/acnt",
+            api_id="kt00009",
+            tkn=tkn,
+            body=body,
+        )
+        ensure_ok("kt00009", res.code, res.msg)
+        rows: list[dict[str, Any]] = (
+            res.data.get("acnt_ord_cntr_prst_array")
+            or res.data.get("acnt_ord_cntr_prst_a")
+            or []
+        )
+        out: list[OrdStat] = []
+        for x in rows:
+            out.append(
+                OrdStat(
+                    ord_no=str(x.get("ord_no", "")),
+                    orig_ord_no=str(x.get("orig_ord_no", "")),
+                    stk_cd=str(x.get("stk_cd", "")),
+                    stk_nm=str(x.get("stk_nm", "")),
+                    trde_tp=str(x.get("trde_tp", "")),
+                    io_tp_nm=str(x.get("io_tp_nm", "")),
+                    ord_qty=str(x.get("ord_qty", "")),
+                    cntr_qty=str(x.get("cntr_qty", "")),
+                    ord_uv=str(x.get("ord_uv", "")),
+                    cntr_uv=str(x.get("cntr_uv", "")),
+                    cntr_tm=str(x.get("cntr_tm", "")),
+                    acpt_tp=str(x.get("acpt_tp", "")),
+                    dmst_stex_tp=str(x.get("dmst_stex_tp", "")),
+                )
+            )
+        return out
