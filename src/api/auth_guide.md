@@ -12,6 +12,15 @@
   - URL: `/oauth2/token`
   - 요청 바디: `grant_type`, `appkey`, `secretkey`
   - 성공 시 토큰, 타입, 만료시간을 `Tkn` 객체로 반환
+- `Auth.revoke(token)`
+  - API ID: `au10002`
+  - URL: `/oauth2/revoke`
+  - 요청 바디: `appkey`, `secretkey`, `token`
+  - 기존 토큰 폐기
+- `TknMgr.get()`
+  - 현재 토큰이 없거나 만료 임박이면 자동 재발급
+- `TknMgr.rotate()`
+  - 현재 토큰 폐기 후 즉시 신규 토큰 발급
 
 ## 실행 전 준비
 
@@ -25,11 +34,12 @@
 
 ```python
 from src.core.cfg import load_cfg
-from src.api.auth import Auth
+from src.api.auth import Auth, TknMgr
 
 cfg = load_cfg()
 auth = Auth(cfg)
-t = auth.issue()
+mgr = TknMgr(auth)
+t = mgr.get()
 print(t.typ, t.val[:10], t.exp_dt)
 ```
 
