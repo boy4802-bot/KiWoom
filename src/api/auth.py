@@ -6,9 +6,8 @@ from dataclasses import dataclass
 from datetime import datetime, timedelta
 import time
 
-import httpx
-
 from src.api.cli import ApiCli
+from src.api.err import HttpErr, ensure_ok
 from src.core.cfg import Cfg
 
 
@@ -47,17 +46,16 @@ class Auth:
                     body=body,
                 )
                 break
-            except httpx.HTTPStatusError as e:
+            except HttpErr as e:
                 last_err = e
-                if e.response.status_code == 429 and i < retry - 1:
+                if e.status_code == 429 and i < retry - 1:
                     time.sleep(wait_s * (i + 1))
                     continue
                 raise
         else:
             raise RuntimeError(f"token issue failed after retries: {last_err}")
 
-        if res.code != 0:
-            raise RuntimeError(f"token issue failed: {res.code} {res.msg}")
+        ensure_ok("au10001", res.code, res.msg)
 
         data = res.data
         return Tkn(
@@ -80,8 +78,7 @@ class Auth:
             tkn=tkn,
             body=body,
         )
-        if res.code != 0:
-            raise RuntimeError(f"token revoke failed: {res.code} {res.msg}")
+        ensure_ok("au10002", res.code, res.msg)
 
 
 class TknMgr:

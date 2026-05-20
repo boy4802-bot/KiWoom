@@ -7,6 +7,7 @@ from typing import Any
 
 import httpx
 
+from src.api.err import HttpErr
 from src.core.cfg import Cfg
 
 
@@ -58,7 +59,10 @@ class ApiCli:
         hdr = self.mk_hdr(api_id=api_id, tkn=tkn, cont_yn=cont_yn, next_key=next_key)
         with httpx.Client(timeout=self.timeout_s) as cli:
             r = cli.request(method.upper(), url, headers=hdr, json=body)
-        r.raise_for_status()
+        try:
+            r.raise_for_status()
+        except httpx.HTTPStatusError as e:
+            raise HttpErr(api_id=api_id, status_code=e.response.status_code, msg=str(e)) from e
         js = r.json() if r.content else {}
         code = int(js.get("return_code", 0))
         msg = str(js.get("return_msg", ""))
