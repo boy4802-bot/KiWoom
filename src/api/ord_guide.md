@@ -3,7 +3,7 @@
 ## 이 파일은 무엇을 하나요?
 
 `ord.py`는 주문 API 모듈입니다.
-현재는 `kt10000`(매수주문)을 구현했으며, 이후 매도/정정/취소 함수가 같은 파일에 확장됩니다.
+아래 4개 주문 함수를 제공합니다.
 
 ## 핵심 함수
 
@@ -11,6 +11,13 @@
   - 종목코드와 수량으로 매수주문 실행
   - 기본 매매구분은 `3`(시장가)
   - 성공 시 주문번호(`ord_no`) 반환
+- `OrdApi.sell(stk_cd, qty, ...)`
+  - 매도주문 (`kt10001`)
+- `OrdApi.mdfy(orig_ord_no, stk_cd, qty, mdfy_uv, ...)`
+  - 정정주문 (`kt10002`)
+- `OrdApi.cncl(orig_ord_no, stk_cd, qty=0, ...)`
+  - 취소주문 (`kt10003`)
+  - `qty=0`이면 잔량 전체 취소
 
 ## 주요 인자
 
@@ -34,6 +41,14 @@ tm = TknMgr(Auth(cfg, cli=cli))
 ord = OrdApi(cli, tm)
 res = ord.buy('005930', 1)
 print(res.ord_no)
+```
+
+정정/취소 예시:
+
+```python
+md = ord.mdfy(orig_ord_no='0000139', stk_cd='005930', qty=1, mdfy_uv='70000')
+cc = ord.cncl(orig_ord_no='0000139', stk_cd='005930', qty=0)
+print(md.ord_no, cc.ord_no)
 ```
 
 ## 주의사항
