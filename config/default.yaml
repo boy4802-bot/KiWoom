@@ -1,0 +1,8 @@
+# 기본 설정 (비밀값은 .env 에만)
+app:
+  name: KiWoom
+  log_dir: logs
+
+trade:
+  max_orders_per_day: 50
+  max_daily_loss_pct: 3.0
