@@ -66,3 +66,10 @@ for r in rows[:3]:
 
 - 실거래 모드에서는 실제 주문이 체결될 수 있습니다.
 - 검증 시 소수량/모의환경으로 먼저 테스트하세요.
+
+## 장중 검증 (3.1 · 3.2)
+
+구현은 완료되었고, 모의 주문·정정·취소 **실 API 검증**은 장중에 진행합니다.
+절차·명령 예시: [docs/VERIFY_ORD_MARKET.md](../../docs/VERIFY_ORD_MARKET.md)
+
+중복 주문 방지: `ord_idem.py`의 `OrdIdem.buy_once` / `sell_once` (3.4 완료)
