@@ -42,6 +42,12 @@ def _base_url(mode: str) -> str:
     return "https://api.kiwoom.com" if mode == "live" else "https://mockapi.kiwoom.com"
 
 
+def _pick_mode_val(mode: str, base: str) -> str:
+    """Pick mode-specific env value, fallback to legacy key."""
+    mode_key = f"{base}_{mode.upper()}"
+    return os.getenv(mode_key, "").strip() or os.getenv(base, "").strip()
+
+
 def _read_yaml(path: Path) -> dict:
     if not path.exists():
         return {}
@@ -54,6 +60,7 @@ def _read_yaml(path: Path) -> dict:
 def load_cfg(
     env_path: Path | None = None,
     yaml_path: Path | None = None,
+    force_mode: str | None = None,
 ) -> Cfg:
     """Load config from .env and YAML.
 
@@ -69,7 +76,7 @@ def load_cfg(
     app_y = y.get("app", {}) if isinstance(y.get("app", {}), dict) else {}
     trd_y = y.get("trade", {}) if isinstance(y.get("trade", {}), dict) else {}
 
-    mode = os.getenv("KIWOOM_MODE", "mock").strip().lower() or "mock"
+    mode = (force_mode or os.getenv("KIWOOM_MODE", "mock")).strip().lower() or "mock"
     if mode not in {"mock", "live"}:
         raise ValueError("KIWOOM_MODE must be 'mock' or 'live'")
 
@@ -83,9 +90,9 @@ def load_cfg(
     )
     api = ApiCfg(
         mode=mode,
-        appkey=os.getenv("KIWOOM_APPKEY", "").strip(),
-        secret=os.getenv("KIWOOM_SECRET", "").strip(),
-        acc_no=os.getenv("ACC_NO", "").strip(),
+        appkey=_pick_mode_val(mode, "KIWOOM_APPKEY"),
+        secret=_pick_mode_val(mode, "KIWOOM_SECRET"),
+        acc_no=_pick_mode_val(mode, "ACC_NO"),
         base_url=_base_url(mode),
     )
     return Cfg(app=app, trade=trade, api=api)

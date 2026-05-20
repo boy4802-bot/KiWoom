@@ -16,9 +16,9 @@
 ## 주요 설정
 
 - `KIWOOM_MODE`: `mock` 또는 `live`
-- `KIWOOM_APPKEY`: API 앱키
-- `KIWOOM_SECRET`: API 시크릿
-- `ACC_NO`: 계좌번호
+- `KIWOOM_APPKEY_MOCK`, `KIWOOM_SECRET_MOCK`, `ACC_NO_MOCK`
+- `KIWOOM_APPKEY_LIVE`, `KIWOOM_SECRET_LIVE`, `ACC_NO_LIVE`
+- (하위호환) `KIWOOM_APPKEY`, `KIWOOM_SECRET`, `ACC_NO`
 - `trade.max_orders_per_day`: 일일 최대 주문 수
 - `trade.max_daily_loss_pct`: 일일 최대 손실률
 
@@ -34,4 +34,11 @@ from src.core.cfg import load_cfg
 
 cfg = load_cfg()
 print(cfg.api.base_url)
+```
+
+모드를 강제로 지정해 확인할 수도 있습니다.
+
+```python
+cfg_live = load_cfg(force_mode="live")
+cfg_mock = load_cfg(force_mode="mock")
 ```
