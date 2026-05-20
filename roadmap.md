@@ -4,11 +4,11 @@
 > **원칙**: [docs/DEVELOPMENT_PRINCIPLES.md](docs/DEVELOPMENT_PRINCIPLES.md)  
 > **진행 표기**: `[ ]` 대기 · `[~]` 진행 중 · `[x]` 완료 · `[-]` 보류/스킵
 
-**전체 진행률**: `0 / 48` 단계 완료 (0%)
+**전체 진행률**: `3 / 48` 단계 완료 (6%)
 
 ```
 마지막 갱신: 2026-05-20
-현재 작업 단계: (미착수)
+현재 작업 단계: 0.2
 ```
 
 ---
@@ -35,11 +35,11 @@ KiWoom 자동매매
 
 | 상태 | ID | 작업 | 산출물 | 검증 |
 |:----:|:---:|------|--------|------|
-| [ ] | 0.1 | 저장소·폴더 구조 확정 | `src/`, `docs/`, `config/`, `strategies/` | 구조 문서와 일치 |
+| [x] | 0.1 | 저장소·폴더 구조 확정 | `src/`, `docs/`, `config/`, `strategies/` | 구조 문서와 일치 |
 | [ ] | 0.2 | Python 64bit 가상환경·requirements | venv, 의존성 | 64bit Python 확인 |
-| [ ] | 0.3 | `.env.example`, `.gitignore` | 비밀정보 제외 | `.env` 미커밋 |
+| [x] | 0.3 | `.env.example`, `.gitignore` | 비밀정보 제외 | `.env` 미커밋 |
 | [ ] | 0.4 | 로깅·설정 (`core/cfg.py`, `core/log.py`) | 공통 모듈 | 설정 로드 성공 |
-| [ ] | 0.5 | **Git** `[0.x] 프로젝트 기반` | 커밋 | GitHub push |
+| [x] | 0.5 | **Git** `[0.x] 프로젝트 기반` | 커밋 | GitHub push |
 
 ---
 
