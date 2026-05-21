@@ -15,6 +15,8 @@ from src.api.bar import BarApi
 from src.api.cli import ApiCli
 from src.api.ord import OrdApi
 from src.core.cfg import load_cfg
+from src.core.sched import is_market_open, market_label
+from src.core.state import load_state
 from src.core.eng import make_engine
 from src.strat.loader import list_strats
 from src.ui.eng_run import EngRunner
@@ -94,6 +96,11 @@ def _tab_dashboard() -> None:
     c1.metric("모드", cfg.api.mode)
     c2.metric("계좌", cfg.api.acc_no or "(미설정)")
     c3.metric("엔진", "실행 중" if st.session_state.runner.running else "정지")
+    mlabel = market_label()
+    st.caption(
+        f"장 상태: **{mlabel}** ({'주문 가능' if is_market_open() else '장외 — 주문 차단'}) · "
+        f"오늘 주문 {load_state().order_count}건"
+    )
 
     if st.button("잔고 새로고침"):
         try:

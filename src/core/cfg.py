@@ -95,4 +95,18 @@ def load_cfg(
         acc_no=_pick_mode_val(mode, "ACC_NO"),
         base_url=_base_url(mode),
     )
-    return Cfg(app=app, trade=trade, api=api)
+    cfg = Cfg(app=app, trade=trade, api=api)
+    validate_cfg(cfg)
+    return cfg
+
+
+def validate_cfg(cfg: Cfg) -> None:
+    """Ensure mode matches API base URL (mock/live separation)."""
+    expected = _base_url(cfg.api.mode)
+    if cfg.api.base_url.rstrip("/") != expected.rstrip("/"):
+        raise ValueError(
+            f"KIWOOM_MODE={cfg.api.mode} but base_url={cfg.api.base_url} "
+            f"(expected {expected})"
+        )
+    if not cfg.api.appkey or not cfg.api.secret:
+        raise ValueError(f"API keys missing for mode={cfg.api.mode}")

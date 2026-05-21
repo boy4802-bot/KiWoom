@@ -14,6 +14,9 @@ from src.api.ord import OrdApi
 from src.api.ord_idem import OrdIdem
 from src.core.cfg import Cfg, load_cfg
 from src.core.log import init_log
+from src.core.safe import Safe
+from src.core.sched import is_market_open, market_label
+from src.core.state import load_state, save_state
 from src.strat.base import Ctx, Sig, StratBase
 from src.strat.loader import load_strat
 
@@ -57,6 +60,16 @@ class Engine:
         self.bar_api = BarApi(self.cli, self.tkn_mgr)
         self.bal_api = BalApi(self.cli, self.tkn_mgr)
         self.ord_idem = OrdIdem(OrdApi(self.cli, self.tkn_mgr))
+        self.safe = Safe(cfg)
+        self._cur_evlt = 0
+
+    def _persist_state(self, *, running: bool) -> None:
+        st = load_state()
+        st.strat = self.strat.name
+        st.watchlist = list(self.watchlist)
+        st.dry_run = self.dry_run
+        st.running = running
+        save_state(st)
 
     def _refresh_positions(self, ctx: Ctx) -> None:
         try:
@@ -66,10 +79,19 @@ class Engine:
                 for it in res.items
                 if _norm_stk(it.stk_cd)
             }
+            self._cur_evlt = res.tot_evlt_amt
+            self.safe.set_day_start_evlt(res.tot_evlt_amt)
         except Exception:
             log.exception("balance refresh failed")
 
     def _exec_sig(self, sig: Sig) -> bool:
+        if not is_market_open():
+            log.info("skip order (market %s): %s", market_label(), sig.id)
+            return False
+        verdict = self.safe.can_trade(cur_evlt_amt=self._cur_evlt)
+        if not verdict.ok:
+            log.warning("kill switch: %s", verdict.reason)
+            return False
         if self.dry_run:
             log.info("DRY_RUN %s %s %s qty=%s %s", sig.side, sig.stk_cd, sig.id, sig.qty, sig.why)
             return True
@@ -85,10 +107,16 @@ class Engine:
             out.dup,
             sig.why,
         )
+        if not out.dup:
+            self.safe.record_order()
         return not out.dup
 
     def run_once(self) -> list[Sig]:
         """Single tick: refresh balance, run strategy per symbol, maybe order."""
+        if not is_market_open():
+            log.info("market closed (%s), skip tick", market_label())
+            return []
+
         ctx = Ctx(
             mode=self.cfg.api.mode,
             params={
@@ -133,6 +161,7 @@ class Engine:
         """Blocking loop until stop() or max_ticks."""
         init_log(log_dir=self.cfg.app.log_dir)
         self._running = True
+        self._persist_state(running=True)
         ticks = 0
         log.info(
             "engine start strat=%s watch=%s mode=%s dry=%s",
@@ -149,9 +178,11 @@ class Engine:
             if self._running:
                 time.sleep(self.interval_sec)
         log.info("engine stop")
+        self._persist_state(running=False)
 
     def stop(self) -> None:
         self._running = False
+        self._persist_state(running=False)
 
 
 def make_engine(
