@@ -78,6 +78,25 @@ await ws.reg_acc(['04', '00'])  # .env ACC_NO 필요
 
 검증: `asyncio.run(smoke_rt())` → `0B`·`0D` > 0 (장중).
 
+## 4.4 구독 풀 (`WsPool`)
+
+종목 추가·삭제를 기억하고, 재연결 시 `sync_stk()`로 복구합니다.
+
+```python
+from src.api.ws import WsCli, WsPool
+
+pool = WsPool(ws, stk_types=['0B', '0D'])
+await pool.connect()
+await pool.add_stk('005930')
+await pool.remove_stk('000660')
+print(pool.list_stk())
+```
+
+- `remove_stk()` → 서버에 `REMOVE` 전송
+- `enable_acc()` → 잔고·주문 실시간(04/00) 등록
+
+검증: `asyncio.run(smoke_pool())` → `after`에 제거한 종목 없음.
+
 ## 주의사항
 
 - REST OAuth 토큰(`TknMgr`)이 있어야 `LOGIN`이 성공합니다.

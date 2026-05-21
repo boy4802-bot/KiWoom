@@ -213,6 +213,34 @@ class WsCli:
             raise ValueError("ACC_NO is required for account real-time REG")
         await self.reg([acc], types, grp_no=grp_no, refresh=refresh)
 
+    async def remove(
+        self,
+        items: list[str],
+        types: list[str],
+        *,
+        grp_no: str = "1",
+        refresh: str = "",
+    ) -> None:
+        """Unregister real-time items (REMOVE)."""
+        await self.send(
+            {
+                "trnm": "REMOVE",
+                "grp_no": grp_no,
+                "refresh": refresh,
+                "data": [{"item": items, "type": types}],
+            }
+        )
+
+    async def remove_stk(
+        self,
+        stk_cds: list[str],
+        types: list[str],
+        *,
+        grp_no: str = "1",
+    ) -> None:
+        """Remove stock-scoped subscriptions."""
+        await self.remove(stk_cds, types, grp_no=grp_no)
+
     async def send(self, msg: dict[str, Any] | str) -> None:
         """Send JSON message."""
         if self._ws is None:
@@ -324,6 +352,114 @@ class WsCli:
             except Exception:
                 pass
             self._ws = None
+
+
+class WsPool:
+    """In-memory subscription pool with add/remove and reconnect restore."""
+
+    def __init__(
+        self,
+        ws: WsCli,
+        *,
+        stk_types: list[str] | None = None,
+        stk_grp: str = "1",
+        acc_types: list[str] | None = None,
+        acc_grp: str = "2",
+    ) -> None:
+        self.ws = ws
+        self.stk_types = stk_types or ["0B", "0D"]
+        self.stk_grp = stk_grp
+        self.acc_types = acc_types or ["04", "00"]
+        self.acc_grp = acc_grp
+        self._stks: set[str] = set()
+        self._acc_on = False
+
+    def list_stk(self) -> list[str]:
+        return sorted(self._stks)
+
+    def has_acc(self) -> bool:
+        return self._acc_on
+
+    async def add_stk(self, stk_cd: str) -> bool:
+        """Add one stock; returns True if newly added."""
+        cd = stk_cd.strip()
+        if not cd or cd in self._stks:
+            return False
+        self._stks.add(cd)
+        if self.ws.connected:
+            await self.ws.reg_stk([cd], self.stk_types, grp_no=self.stk_grp, refresh="1")
+        return True
+
+    async def remove_stk(self, stk_cd: str) -> bool:
+        """Remove one stock; returns True if removed."""
+        cd = stk_cd.strip()
+        if cd not in self._stks:
+            return False
+        self._stks.discard(cd)
+        if self.ws.connected:
+            await self.ws.remove_stk([cd], self.stk_types, grp_no=self.stk_grp)
+        return True
+
+    async def enable_acc(self) -> None:
+        if self._acc_on:
+            return
+        self._acc_on = True
+        if self.ws.connected:
+            await self.ws.reg_acc(self.acc_types, grp_no=self.acc_grp)
+
+    async def sync_stk(self) -> None:
+        """Replace stock group subscriptions from pool state."""
+        if not self.ws.connected:
+            return
+        if not self._stks:
+            return
+        await self.ws.reg_stk(
+            list(self._stks),
+            self.stk_types,
+            grp_no=self.stk_grp,
+            refresh="0",
+        )
+
+    async def connect(self) -> None:
+        """Connect WebSocket and restore pool subscriptions."""
+        await self.ws.connect()
+        if self._stks:
+            await self.sync_stk()
+        if self._acc_on:
+            await self.ws.reg_acc(self.acc_types, grp_no=self.acc_grp, refresh="0")
+
+    async def close(self) -> None:
+        await self.ws.close()
+
+
+async def smoke_pool(
+    cfg: Cfg | None = None,
+    wait_s: float = 4.0,
+) -> dict[str, dict[str, int]]:
+    """Add 2 stocks, remove 1; returns tick counts before/after remove."""
+    from src.api.auth import Auth
+    from src.core.cfg import load_cfg
+
+    c = cfg or load_cfg(force_mode="mock")
+    phase = 1
+    before: dict[str, int] = {}
+    after: dict[str, int] = {}
+
+    async def on_cntr(evt: RtCntr) -> None:
+        bucket = before if phase == 1 else after
+        bucket[evt.item] = bucket.get(evt.item, 0) + 1
+
+    ws = WsCli(c, TknMgr(Auth(c)), on_cntr=on_cntr)
+    pool = WsPool(ws, stk_types=["0B"])
+    await pool.connect()
+    await pool.add_stk("005930")
+    await pool.add_stk("000660")
+    await asyncio.sleep(wait_s)
+    phase = 2
+    await pool.remove_stk("000660")
+    await asyncio.sleep(wait_s)
+    await pool.close()
+    return {"before": before, "after": after}
 
 
 async def smoke_rt(
