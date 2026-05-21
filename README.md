@@ -8,6 +8,7 @@
 |------|------|
 | [roadmap.md](roadmap.md) | 트리형 개발 로드맵·진행 상황 |
 | [docs/DEVELOPMENT_PRINCIPLES.md](docs/DEVELOPMENT_PRINCIPLES.md) | 개발 시 지켜야 할 원칙 |
+| [docs/STRATEGY_ENGINE.md](docs/STRATEGY_ENGINE.md) | 5단계 매매 전략 엔진 설계 |
 
 ## 환경 요구사항
 

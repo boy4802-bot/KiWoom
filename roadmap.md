@@ -4,11 +4,11 @@
 > **원칙**: [docs/DEVELOPMENT_PRINCIPLES.md](docs/DEVELOPMENT_PRINCIPLES.md)  
 > **진행 표기**: `[ ]` 대기 · `[~]` 진행 중 · `[x]` 완료 · `[-]` 보류/스킵
 
-**전체 진행률**: `26 / 48` 단계 완료 (54%)
+**전체 진행률**: `32 / 48` 단계 완료 (67%)
 
 ```
 마지막 갱신: 2026-05-21
-현재 작업 단계: 5.1
+현재 작업 단계: 6.1
 ```
 
 ---
@@ -96,12 +96,12 @@ KiWoom 자동매매
 
 | 상태 | ID | 작업 | 산출물 | 검증 |
 |:----:|:---:|------|--------|------|
-| [ ] | 5.1 | 인터페이스 (`strat/base.py`) | on_bar, signal | 더미 테스트 |
-| [ ] | 5.2 | 로더 (`strat/loader.py`) | 동적 로드 | 파일 추가만으로 등록 |
-| [ ] | 5.3 | 이동평균 (`strat_ma.py`) | strat_ma_guide | 모의 신호 |
-| [ ] | 5.4 | RSI (`strat_rsi.py`) | 파라미터 | UI 반영 |
-| [ ] | 5.5 | 엔진 (`core/eng.py`) | 루프 | 모의 자동 1회 매매 |
-| [ ] | 5.6 | **Git** `[5.x] 전략` | 커밋 | 2전략 교체 |
+| [x] | 5.1 | 인터페이스 (`strat/base.py`) | on_bar, signal | 2026-05-21 dummy Sig OK |
+| [x] | 5.2 | 로더 (`strat/loader.py`) | 동적 로드 | strat_ma/rsi/dummy 로드 OK |
+| [x] | 5.3 | 이동평균 (`strat_ma.py`) | strat_ma_guide | 오프라인 골든크로스 신호 OK |
+| [x] | 5.4 | RSI (`strat_rsi.py`) | params | 오프라인 RSI buy 신호 OK |
+| [x] | 5.5 | 엔진 (`core/eng.py`) | 루프 | dry_run dummy 1회 OK |
+| [x] | 5.6 | **Git** `[5.x] 전략` | 커밋 | MA↔RSI load_strat 교체 |
 
 ---
 
@@ -162,4 +162,4 @@ KiWoom 자동매매
 
 ## 다음 작업
 
-**5.1** — 전략 인터페이스 (`strat/base.py`)
+**6.1** — Streamlit 진입점 (`app.py`)
