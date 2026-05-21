@@ -43,18 +43,22 @@ asyncio.run(main())
 asyncio.run(smoke_login())
 ```
 
-## 4.2 이후 (실시간 등록)
+## 4.2 체결(0B) 콜백
 
-체결·호가 등록은 `send()`로 `REG` 메시지를 보냅니다.
+`reg()`로 등록하고 `on_cntr` 콜백으로 체결 틱을 받습니다.
 
 ```python
-await ws.send({
-    'trnm': 'REG',
-    'grp_no': '1',
-    'refresh': '1',
-    'data': [{'item': ['005930'], 'type': ['0B']}],
-})
+from src.api.ws import WsCli, RtCntr
+
+def on_tick(c: RtCntr):
+    print(c.item, c.tm, c.cur_prc, c.cntr_qty)
+
+ws = WsCli(cfg, TknMgr(Auth(cfg)), on_cntr=on_tick)
+await ws.connect()
+await ws.reg(['005930'], ['0B'])
 ```
+
+검증: `asyncio.run(smoke_cntr())` — 장중에 0보다 큰 틱 수가 나오면 OK.
 
 ## 주의사항
 

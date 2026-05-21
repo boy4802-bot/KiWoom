@@ -6,6 +6,7 @@ import asyncio
 import json
 import logging
 from collections.abc import Awaitable, Callable
+from dataclasses import dataclass
 from typing import Any
 
 import websockets
@@ -18,6 +19,31 @@ from src.core.cfg import Cfg
 log = logging.getLogger("kiwoom")
 
 MsgCb = Callable[[dict[str, Any]], Awaitable[None] | None]
+CntrCb = Callable[["RtCntr"], Awaitable[None] | None]
+
+
+@dataclass(slots=True)
+class RtCntr:
+    """Parsed 0B (주식체결) real-time tick."""
+
+    item: str
+    tm: str
+    cur_prc: str
+    cntr_qty: str
+    raw: dict[str, Any]
+
+
+def _parse_cntr(row: dict[str, Any]) -> RtCntr:
+    vals = row.get("values") or {}
+    if not isinstance(vals, dict):
+        vals = {}
+    return RtCntr(
+        item=str(row.get("item", "")),
+        tm=str(vals.get("20", "")),
+        cur_prc=str(vals.get("10", "")),
+        cntr_qty=str(vals.get("15", "")),
+        raw=row,
+    )
 
 
 def ws_url(cfg: Cfg) -> str:
@@ -35,6 +61,7 @@ class WsCli:
         tkn_mgr: TknMgr,
         *,
         on_msg: MsgCb | None = None,
+        on_cntr: CntrCb | None = None,
         reconnect_wait_s: float = 2.0,
         open_timeout_s: float = 10.0,
     ) -> None:
@@ -42,12 +69,14 @@ class WsCli:
         self.tkn_mgr = tkn_mgr
         self.uri = ws_url(cfg)
         self.on_msg = on_msg
+        self.on_cntr = on_cntr
         self.reconnect_wait_s = reconnect_wait_s
         self.open_timeout_s = open_timeout_s
 
         self._ws: ClientConnection | None = None
         self._logged_in = False
         self._running = False
+        self._recv_task: asyncio.Task[None] | None = None
         self._send_lock = asyncio.Lock()
 
     @property
@@ -66,7 +95,26 @@ class WsCli:
             await self._close_quiet()
             raise RuntimeError("WebSocket LOGIN failed")
         self._logged_in = True
+        self._start_recv_task()
         log.info("WebSocket connected: %s", self.uri)
+
+    async def reg(
+        self,
+        items: list[str],
+        types: list[str],
+        *,
+        grp_no: str = "1",
+        refresh: str = "1",
+    ) -> None:
+        """Register real-time items (e.g. type 0B = 체결)."""
+        await self.send(
+            {
+                "trnm": "REG",
+                "grp_no": grp_no,
+                "refresh": refresh,
+                "data": [{"item": items, "type": types}],
+            }
+        )
 
     async def send(self, msg: dict[str, Any] | str) -> None:
         """Send JSON message."""
@@ -83,7 +131,8 @@ class WsCli:
             try:
                 if not self.connected:
                     await self.connect()
-                await self._recv_loop()
+                if self._recv_task is not None:
+                    await self._recv_task
             except ConnectionClosed:
                 log.warning("WebSocket closed by server")
             except Exception:
@@ -110,12 +159,20 @@ class WsCli:
         await self._handle_msg(data)
         return data.get("trnm") == "LOGIN" and int(data.get("return_code", -1)) == 0
 
+    def _start_recv_task(self) -> None:
+        if self._recv_task is None or self._recv_task.done():
+            self._recv_task = asyncio.create_task(self._recv_loop())
+
     async def _recv_loop(self) -> None:
         if self._ws is None:
             return
-        async for raw in self._ws:
-            data = json.loads(raw)
-            await self._handle_msg(data)
+        try:
+            async for raw in self._ws:
+                data = json.loads(raw)
+                await self._handle_msg(data)
+        except ConnectionClosed:
+            self._logged_in = False
+            raise
 
     async def _handle_msg(self, data: dict[str, Any]) -> None:
         trnm = str(data.get("trnm", ""))
@@ -130,6 +187,16 @@ class WsCli:
             await self.send(data)
             return
 
+        if trnm == "REAL" and self.on_cntr is not None:
+            for row in data.get("data", []) or []:
+                if not isinstance(row, dict):
+                    continue
+                if str(row.get("type", "")) != "0B":
+                    continue
+                cb = self.on_cntr(_parse_cntr(row))
+                if asyncio.iscoroutine(cb):
+                    await cb
+
         if self.on_msg is not None:
             cb = self.on_msg(data)
             if asyncio.iscoroutine(cb):
@@ -137,12 +204,43 @@ class WsCli:
 
     async def _close_quiet(self) -> None:
         self._logged_in = False
+        if self._recv_task is not None and not self._recv_task.done():
+            self._recv_task.cancel()
+            try:
+                await self._recv_task
+            except (asyncio.CancelledError, ConnectionClosed):
+                pass
+            self._recv_task = None
         if self._ws is not None:
             try:
                 await self._ws.close()
             except Exception:
                 pass
             self._ws = None
+
+
+async def smoke_cntr(
+    cfg: Cfg | None = None,
+    stk_cd: str = "005930",
+    wait_s: float = 5.0,
+) -> int:
+    """REG 0B and count ticks; for 4.2 verification."""
+    from src.api.auth import Auth
+    from src.core.cfg import load_cfg
+
+    c = cfg or load_cfg(force_mode="mock")
+    n = 0
+
+    def _on(c: RtCntr) -> None:
+        nonlocal n
+        n += 1
+
+    ws = WsCli(c, TknMgr(Auth(c)), on_cntr=_on)
+    await ws.connect()
+    await ws.reg([stk_cd], ["0B"])
+    await asyncio.sleep(wait_s)
+    await ws.close()
+    return n
 
 
 async def smoke_login(cfg: Cfg | None = None, hold_s: float = 3.0) -> bool:
