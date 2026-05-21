@@ -60,6 +60,24 @@ await ws.reg(['005930'], ['0B'])
 
 검증: `asyncio.run(smoke_cntr())` — 장중에 0보다 큰 틱 수가 나오면 OK.
 
+## 4.3 호가(0D) · 잔고(04) · 주문(00)
+
+| 타입 | 등록 | 콜백 |
+|------|------|------|
+| `0D` | `reg_stk(['005930'], ['0D'])` | `on_hoga` → `RtHoga` |
+| `04` | `reg_acc(['04'])` (계좌번호) | `on_bal` → `RtBal` |
+| `00` | `reg_acc(['00'])` | `on_ord` → `RtOrd` |
+
+```python
+await ws.reg_stk(['005930'], ['0B', '0D'])
+await ws.reg_acc(['04', '00'])  # .env ACC_NO 필요
+```
+
+- `0D`는 장중 종목 호가 변경 시 수신됩니다.
+- `04`/`00`은 **잔고·주문 변동**이 있을 때만 이벤트가 옵니다(REG 성공 ≠ 즉시 수신).
+
+검증: `asyncio.run(smoke_rt())` → `0B`·`0D` > 0 (장중).
+
 ## 주의사항
 
 - REST OAuth 토큰(`TknMgr`)이 있어야 `LOGIN`이 성공합니다.

@@ -20,6 +20,14 @@ log = logging.getLogger("kiwoom")
 
 MsgCb = Callable[[dict[str, Any]], Awaitable[None] | None]
 CntrCb = Callable[["RtCntr"], Awaitable[None] | None]
+HogaCb = Callable[["RtHoga"], Awaitable[None] | None]
+BalCb = Callable[["RtBal"], Awaitable[None] | None]
+OrdCb = Callable[["RtOrd"], Awaitable[None] | None]
+
+
+def _row_vals(row: dict[str, Any]) -> dict[str, Any]:
+    vals = row.get("values") or {}
+    return vals if isinstance(vals, dict) else {}
 
 
 @dataclass(slots=True)
@@ -33,15 +41,73 @@ class RtCntr:
     raw: dict[str, Any]
 
 
+@dataclass(slots=True)
+class RtHoga:
+    """Parsed 0D (주식호가잔량)."""
+
+    item: str
+    tm: str
+    ask1: str
+    bid1: str
+    ask1_qty: str
+    bid1_qty: str
+    raw: dict[str, Any]
+
+
+@dataclass(slots=True)
+class RtBal:
+    """Parsed 04 (잔고)."""
+
+    item: str
+    values: dict[str, Any]
+    raw: dict[str, Any]
+
+
+@dataclass(slots=True)
+class RtOrd:
+    """Parsed 00 (주문체결/주문접수)."""
+
+    item: str
+    values: dict[str, Any]
+    raw: dict[str, Any]
+
+
 def _parse_cntr(row: dict[str, Any]) -> RtCntr:
-    vals = row.get("values") or {}
-    if not isinstance(vals, dict):
-        vals = {}
+    vals = _row_vals(row)
     return RtCntr(
         item=str(row.get("item", "")),
         tm=str(vals.get("20", "")),
         cur_prc=str(vals.get("10", "")),
         cntr_qty=str(vals.get("15", "")),
+        raw=row,
+    )
+
+
+def _parse_hoga(row: dict[str, Any]) -> RtHoga:
+    vals = _row_vals(row)
+    return RtHoga(
+        item=str(row.get("item", "")),
+        tm=str(vals.get("21", "")),
+        ask1=str(vals.get("41", "")),
+        bid1=str(vals.get("51", "")),
+        ask1_qty=str(vals.get("61", "")),
+        bid1_qty=str(vals.get("71", "")),
+        raw=row,
+    )
+
+
+def _parse_bal(row: dict[str, Any]) -> RtBal:
+    return RtBal(
+        item=str(row.get("item", "")),
+        values=_row_vals(row),
+        raw=row,
+    )
+
+
+def _parse_ord(row: dict[str, Any]) -> RtOrd:
+    return RtOrd(
+        item=str(row.get("item", "")),
+        values=_row_vals(row),
         raw=row,
     )
 
@@ -62,6 +128,9 @@ class WsCli:
         *,
         on_msg: MsgCb | None = None,
         on_cntr: CntrCb | None = None,
+        on_hoga: HogaCb | None = None,
+        on_bal: BalCb | None = None,
+        on_ord: OrdCb | None = None,
         reconnect_wait_s: float = 2.0,
         open_timeout_s: float = 10.0,
     ) -> None:
@@ -70,6 +139,9 @@ class WsCli:
         self.uri = ws_url(cfg)
         self.on_msg = on_msg
         self.on_cntr = on_cntr
+        self.on_hoga = on_hoga
+        self.on_bal = on_bal
+        self.on_ord = on_ord
         self.reconnect_wait_s = reconnect_wait_s
         self.open_timeout_s = open_timeout_s
 
@@ -115,6 +187,31 @@ class WsCli:
                 "data": [{"item": items, "type": types}],
             }
         )
+
+    async def reg_stk(
+        self,
+        stk_cds: list[str],
+        types: list[str],
+        *,
+        grp_no: str = "1",
+        refresh: str = "1",
+    ) -> None:
+        """Register stock-scoped real-time (0B, 0D, ...)."""
+        await self.reg(stk_cds, types, grp_no=grp_no, refresh=refresh)
+
+    async def reg_acc(
+        self,
+        types: list[str],
+        *,
+        acc_no: str | None = None,
+        grp_no: str = "2",
+        refresh: str = "0",
+    ) -> None:
+        """Register account-scoped real-time (04=잔고, 00=주문)."""
+        acc = (acc_no or self.cfg.api.acc_no).strip()
+        if not acc:
+            raise ValueError("ACC_NO is required for account real-time REG")
+        await self.reg([acc], types, grp_no=grp_no, refresh=refresh)
 
     async def send(self, msg: dict[str, Any] | str) -> None:
         """Send JSON message."""
@@ -187,19 +284,29 @@ class WsCli:
             await self.send(data)
             return
 
-        if trnm == "REAL" and self.on_cntr is not None:
-            for row in data.get("data", []) or []:
-                if not isinstance(row, dict):
-                    continue
-                if str(row.get("type", "")) != "0B":
-                    continue
-                cb = self.on_cntr(_parse_cntr(row))
-                if asyncio.iscoroutine(cb):
-                    await cb
+        if trnm == "REAL":
+            await self._dispatch_real(data)
 
         if self.on_msg is not None:
             cb = self.on_msg(data)
             if asyncio.iscoroutine(cb):
+                await cb
+
+    async def _dispatch_real(self, data: dict[str, Any]) -> None:
+        for row in data.get("data", []) or []:
+            if not isinstance(row, dict):
+                continue
+            typ = str(row.get("type", ""))
+            cb = None
+            if typ == "0B" and self.on_cntr is not None:
+                cb = self.on_cntr(_parse_cntr(row))
+            elif typ == "0D" and self.on_hoga is not None:
+                cb = self.on_hoga(_parse_hoga(row))
+            elif typ == "04" and self.on_bal is not None:
+                cb = self.on_bal(_parse_bal(row))
+            elif typ == "00" and self.on_ord is not None:
+                cb = self.on_ord(_parse_ord(row))
+            if cb is not None and asyncio.iscoroutine(cb):
                 await cb
 
     async def _close_quiet(self) -> None:
@@ -217,6 +324,46 @@ class WsCli:
             except Exception:
                 pass
             self._ws = None
+
+
+async def smoke_rt(
+    cfg: Cfg | None = None,
+    stk_cd: str = "005930",
+    wait_s: float = 5.0,
+) -> dict[str, int]:
+    """REG 0B/0D/04/00 and count events; for 4.3 verification."""
+    from src.api.auth import Auth
+    from src.core.cfg import load_cfg
+
+    c = cfg or load_cfg(force_mode="mock")
+    cnt = {"0B": 0, "0D": 0, "04": 0, "00": 0}
+
+    async def _cntr(_: RtCntr) -> None:
+        cnt["0B"] += 1
+
+    async def _hoga(_: RtHoga) -> None:
+        cnt["0D"] += 1
+
+    async def _bal(_: RtBal) -> None:
+        cnt["04"] += 1
+
+    async def _ord(_: RtOrd) -> None:
+        cnt["00"] += 1
+
+    ws = WsCli(
+        c,
+        TknMgr(Auth(c)),
+        on_cntr=_cntr,
+        on_hoga=_hoga,
+        on_bal=_bal,
+        on_ord=_ord,
+    )
+    await ws.connect()
+    await ws.reg_stk([stk_cd], ["0B", "0D"])
+    await ws.reg_acc(["04", "00"])
+    await asyncio.sleep(wait_s)
+    await ws.close()
+    return cnt
 
 
 async def smoke_cntr(
