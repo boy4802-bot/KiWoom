@@ -8,6 +8,8 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
+from src.core.paths import data_dir
+
 KST_FMT = "%Y%m%d"
 
 
@@ -28,10 +30,7 @@ class EngState:
 
 
 def state_path(root: Path | None = None) -> Path:
-    base = root or Path(__file__).resolve().parents[2]
-    p = base / "data"
-    p.mkdir(parents=True, exist_ok=True)
-    return p / "eng_state.json"
+    return (root or data_dir()) / "eng_state.json"
 
 
 def load_state(path: Path | None = None) -> EngState:

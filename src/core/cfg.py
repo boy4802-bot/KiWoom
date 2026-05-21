@@ -9,6 +9,8 @@ import os
 import yaml
 from dotenv import load_dotenv
 
+from src.core.paths import config_yaml, env_file, log_dir
+
 
 @dataclass(slots=True)
 class AppCfg:
@@ -66,9 +68,8 @@ def load_cfg(
 
     Priority: .env > yaml > defaults.
     """
-    root = Path(__file__).resolve().parents[2]
-    env_p = env_path or (root / ".env")
-    yml_p = yaml_path or (root / "config" / "default.yaml")
+    env_p = env_path or env_file()
+    yml_p = yaml_path or config_yaml()
 
     load_dotenv(env_p, override=True)
     y = _read_yaml(yml_p)
@@ -82,7 +83,7 @@ def load_cfg(
 
     app = AppCfg(
         name=str(app_y.get("name", "KiWoom")),
-        log_dir=str(app_y.get("log_dir", "logs")),
+        log_dir=str(log_dir()),
     )
     trade = TradeCfg(
         max_orders_per_day=int(trd_y.get("max_orders_per_day", 50)),

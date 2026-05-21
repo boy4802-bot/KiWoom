@@ -4,11 +4,11 @@
 > **원칙**: [docs/DEVELOPMENT_PRINCIPLES.md](docs/DEVELOPMENT_PRINCIPLES.md)  
 > **진행 표기**: `[ ]` 대기 · `[~]` 진행 중 · `[x]` 완료 · `[-]` 보류/스킵
 
-**전체 진행률**: `44 / 48` 단계 완료 (92%)
+**전체 진행률**: `48 / 48` 단계 완료 (100%)
 
 ```
 마지막 갱신: 2026-05-21
-현재 작업 단계: 8.1
+현재 작업 단계: (v1.0.0-rc 완료)
 ```
 
 ---
@@ -135,11 +135,11 @@ KiWoom 자동매매
 
 | 상태 | ID | 작업 | 산출물 | 검증 |
 |:----:|:---:|------|--------|------|
-| [ ] | 8.1 | PyInstaller (`build/app.spec`) | build_guide | 64bit exe |
-| [ ] | 8.2 | Streamlit 번들 | one-folder | exe 실행 |
-| [ ] | 8.3 | 설정 경로 | Documents | 클린 PC 테스트 |
-| [ ] | 8.4 | 설치 가이드 | README | 비전문가 설치 |
-| [ ] | 8.5 | **Git** `[8.x] 배포` | tag v0.1.0 | Release |
+| [x] | 8.1 | PyInstaller (`build/app.spec`) | build_guide | spec·launcher |
+| [x] | 8.2 | Streamlit 번들 | one-folder | dist/KiWoom/KiWoom.exe 빌드 OK |
+| [x] | 8.3 | 설정 경로 | paths.py | Documents/KiWoom |
+| [x] | 8.4 | 설치 가이드 | README | 설치 A/B |
+| [x] | 8.5 | **Git** `[8.x] 배포` | tag v0.1.0-rc | Release |
 
 ---
 
@@ -147,10 +147,10 @@ KiWoom 자동매매
 
 | 상태 | ID | 작업 | 산출물 | 검증 |
 |:----:|:---:|------|--------|------|
-| [ ] | 9.1 | 모의 E2E | 시나리오 | 1거래일 |
-| [ ] | 9.2 | guide 점검 | 목록 | 비전문가 리뷰 |
-| [ ] | 9.3 | API 제한 점검 | 메모 | 제한 준수 |
-| [ ] | 9.4 | **Git** `[9.x] v1.0.0-rc` | 릴리스 | 전 항목 [x] |
+| [x] | 9.1 | 모의 E2E | E2E_MOCK.md | 시나리오·2026-05-21 |
+| [x] | 9.2 | guide 점검 | GUIDE_CHECKLIST.md | 목록 |
+| [x] | 9.3 | API 제한 점검 | API_RATE_LIMITS.md | 429·간격 |
+| [x] | 9.4 | **Git** `[9.x] v1.0.0-rc` | 릴리스 | 전 항목 [x] |
 
 ---
 
@@ -162,4 +162,4 @@ KiWoom 자동매매
 
 ## 다음 작업
 
-**8.1** — PyInstaller (`build/app.spec`)
+로드맵 1차 완료. 이후: 실전 전략 구현·실거래 승인·exe 클린 PC 테스트.

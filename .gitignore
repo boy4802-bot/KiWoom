@@ -10,8 +10,12 @@ __pycache__/
 *.py[cod]
 *.egg-info/
 dist/
-build/
+build/app/
 *.spec.bak
+!build/app.spec
+!build/launcher.py
+!build/build_guide.md
+!build/KiWoom.bat
 
 # logs & data
 logs/

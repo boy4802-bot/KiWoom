@@ -20,9 +20,10 @@ from src.core.state import load_state
 from src.core.eng import make_engine
 from src.strat.loader import list_strats
 from src.ui.eng_run import EngRunner
+from src.core.paths import env_file, install_root
 from src.ui.env_io import load_env_file, save_env_file
 
-ROOT = Path(__file__).resolve().parent
+ROOT = install_root()
 
 
 def _init_state() -> None:
@@ -33,7 +34,7 @@ def _init_state() -> None:
 
 
 def _api_clients():
-    load_dotenv(ROOT / ".env", override=True)
+    load_dotenv(env_file(), override=True)
     cfg = load_cfg()
     cli = ApiCli(cfg)
     tm = TknMgr(Auth(cfg, cli=cli))
@@ -78,7 +79,7 @@ def _sidebar_settings() -> None:
                 "ACC_NO_LIVE": live_acc,
             }
         )
-        load_dotenv(ROOT / ".env", override=True)
+        load_dotenv(env_file(), override=True)
         _ui_log(f"설정 저장 완료 (mode={mode})")
         st.sidebar.success("저장했습니다. 탭을 새로고침하세요.")
         st.rerun()
@@ -167,7 +168,7 @@ def _tab_strategy() -> None:
     c1, c2, c3 = st.columns(3)
     if c1.button("1회 실행"):
         try:
-            load_dotenv(ROOT / ".env", override=True)
+            load_dotenv(env_file(), override=True)
             eng = make_engine(
                 strat_name,
                 [stk.strip()],
@@ -185,7 +186,7 @@ def _tab_strategy() -> None:
 
     if c2.button("연속 시작"):
         try:
-            load_dotenv(ROOT / ".env", override=True)
+            load_dotenv(env_file(), override=True)
             eng = make_engine(
                 strat_name,
                 [stk.strip()],

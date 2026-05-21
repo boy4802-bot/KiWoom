@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from src.core.paths import ensure_user_dirs, user_root
+
 _ENV_KEYS = (
     "KIWOOM_MODE",
     "KIWOOM_APPKEY",
@@ -19,8 +21,10 @@ _ENV_KEYS = (
 
 
 def env_path(root: Path | None = None) -> Path:
-    base = root or Path(__file__).resolve().parents[2]
-    return base / ".env"
+    if root is not None:
+        return root / ".env"
+    ensure_user_dirs()
+    return user_root() / ".env"
 
 
 def load_env_file(path: Path | None = None) -> dict[str, str]:

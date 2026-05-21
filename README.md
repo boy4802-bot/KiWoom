@@ -17,20 +17,42 @@
 - 키움증권 REST API 앱키·시크릿키 ([키움 Open API](https://openapi.kiwoom.com/))
 - 키움 REST API 문서는 "D:\Projects\KiWoom\docs\키움 REST API 문서.pdf" 에서 참조할 것것
 
-## 빠른 시작 (개발 중)
+## 설치 (Windows 64bit)
+
+### A. 개발자 실행
 
 ```powershell
-# 64bit Python 확인
-python -c "import struct; print(struct.calcsize('P')*8)"
+python -c "import struct; print(struct.calcsize('P')*8)"   # 64 확인
 
 python -m venv .venv
 .\.venv\Scripts\Activate.ps1
 pip install -r requirements.txt
 copy .env.example .env
-# .env 에 appkey, secretkey 입력
+# .env 에 모의/실거래 키 입력 (또는 UI에서 저장)
 
 streamlit run app.py
 ```
+
+브라우저: http://localhost:8501
+
+### B. 실행 파일 (PyInstaller)
+
+```powershell
+pip install pyinstaller
+pyinstaller build/app.spec --noconfirm
+```
+
+- 결과: `dist\KiWoom\KiWoom.exe`
+- 최초 실행 전 `문서\KiWoom\.env` 에 API 키 설정 (앱 사이드바에서 저장 가능)
+- 자세한 내용: [build/build_guide.md](build/build_guide.md)
+
+### 설정 폴더
+
+| 용도 | 경로 |
+|------|------|
+| API 키 | `%USERPROFILE%\Documents\KiWoom\.env` |
+| 엔진 상태 | `Documents\KiWoom\data\eng_state.json` |
+| 로그 | `Documents\KiWoom\logs\` |
 
 ## API 환경
 
